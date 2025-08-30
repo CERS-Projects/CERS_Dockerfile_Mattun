@@ -1,0 +1,100 @@
+services:
+
+  # apache:
+  #   build: ./apache
+  #   image: cers-apache-app
+  #   ports:
+  #     - "${APACHE_PORT}:80"
+  #   depends_on:
+  #     - backend
+
+  # tomcat:
+  #   build: ./tomcat
+  #   image: cers-tomcat-app
+  #   ports:
+  #     - "${TOMCAT_PORT}:8080"
+
+  bind:
+    build: ./bind
+    ports: 
+      - "53:53/tcp"
+      - "53:53/udp"
+    restart: always
+    volumes:
+      - bind-data: /var/cache/bind
+    healthcheck:
+      test: ["CMD","dig","@127.0.0.1","my-app.local","+short"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  mysql:
+    image: mysql:${MYSQL_VERSION}
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "${MYSQL_PORT}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD","mysqladmin","ping","-h","localhost"]
+      timeout: 20s
+      retries: 10
+      start_period: 30s
+
+  mongo:
+    image: mongo:${MONGO_VERSION}
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MYSQL_DATABASE}
+    ports:
+      - "${MONGO_PORT}:27017"
+    volumes:
+       - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD","mongosh","--eval","db.runCommand({ping:1})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  backend:
+    build: ./backend
+    image: cers-backend-app
+    ports:
+      - "${SPRINGBOOT_PORT}:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/${MYSQL_DATABASE}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    image: cers-frontend-app
+    ports:
+      - "${REACT_PORT}:5137"
+    volumes:
+      - "./frontend:/app"
+      - "/app/node_modules"
+    stdin_open: true
+    tty: true
+    depends_on:
+      - backend
+
+volumes:
+  mysql-data:
+  mongo-data:
+  bind-data:
