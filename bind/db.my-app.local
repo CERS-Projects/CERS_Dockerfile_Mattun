@@ -1,0 +1,26 @@
+$TTL 86400  ; デフォルトのTTL (Time To Live)
+@ IN SOA ns1.my-app.local. admin.my-app.local. (
+            2023010101  ; Serial (YYYYMMDDNN)
+            3600        ; Refresh (1 hour)
+            1800        ; Retry (30 minutes)
+            604800      ; Expire (1 week)
+            86400 )     ; Minimum TTL (1 day)
+
+; ネームサーバーレコード
+            IN NS   ns1.my-app.local.
+
+; ホストレコード (Aレコード)
+ns1         IN A    127.0.0.1  ; BINDサーバー自身を指す (またはBINDコンテナのIPアドレス)
+
+; アプリケーションサービスへのAレコード (Docker Composeの内部IPアドレスは動的ですが、
+; BINDコンテナ自身からサービス名で解決できることを前提とします)
+
+; バックエンドサービス (backend)
+backend     IN CNAME backend.my-app.local. ; CNAMEとしてサービス名を指定
+api         IN CNAME backend.my-app.local. ; api.my-app.local を backend に解決
+
+; フロントエンドサービス (frontend)
+frontend    IN CNAME frontend.my-app.local. ; frontend.my-app.local を frontend に解決
+
+; その他のカスタムレコード
+# example     IN A    192.168.1.100 ; 特定のIPアドレスに解決したい場合

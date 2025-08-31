@@ -1,0 +1,6 @@
+// my-app.local ドメインのマスターゾーン定義
+zone "my-app.local" IN {
+    type master;
+    file "/etc/bind/db.my-app.local"; // ゾーンファイルへのパス
+    allow-update { none; };
+};

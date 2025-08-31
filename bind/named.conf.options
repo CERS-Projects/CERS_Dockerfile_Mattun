@@ -1,0 +1,47 @@
+options {
+    directory "/var/cache/bind"; # BINDがキャッシュや動的更新ファイルを保存するディレクトリ
+    recursion yes; # 再帰的なクエリを許可（外部のDNSにも問い合わせに行く）
+
+    # 外部からのDNS問い合わせを許可するIPアドレスのリスト
+    # any を指定すると全てのIPアドレスからの問い合わせを許可。
+    # 開発環境では any でも構いませんが、本番環境では制限すべきです。
+    allow-query { any; };
+    allow-recursion { any; };
+
+    # 外部のDNSサーバー (フォワーダー) を指定。
+    # ここに指定したDNSサーバーに、自身が解決できないクエリを転送します。
+    # 例: Google Public DNS
+    forwarders {
+        8.8.8.8;
+        8.8.4.4;
+    };
+    forward only; # 自分では解決せず、フォワーダーにのみ転送
+
+    # BINDがリッスンするポートとインターフェース
+    listen-on port 53 { any; };
+    listen-on-v6 port 53 { any; };
+
+    # DNSSECの検証を無効化（開発環境では簡略化のため。本番では有効化を検討）
+    dnssec-validation no;
+
+    # ログ設定 (Dockerの標準出力/エラー出力へ転送)
+    logging {
+        channel default_log {
+            # ファイルに出力する代わりに、標準エラー出力に送る
+            # category default { default_log; };
+            # category queries { default_log; };
+            # category security { default_log; };
+            # category client { default_log; };
+            # category general { default_log; };
+            # category network { default_log; };
+            stderr;
+            print-category yes;
+            print-severity yes;
+        };
+        category default { default_log; };
+        category queries { default_log; };
+    };
+};
+
+// ローカルゾーン定義ファイルをインクルード
+include "/etc/bind/named.conf.local";
